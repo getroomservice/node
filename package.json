@@ -1,11 +1,16 @@
 {
   "name": "@roomservice/node",
   "version": "0.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
-    "build": "rm -rf dist; tsc"
+    "build": "rm -rf tsc; tsc",
+    "prepublish": "yarn build"
   },
+  "files": [
+    "/dist"
+  ],
+  "types": "dist/index.d.ts",
   "dependencies": {
     "got": "^10.0.3",
     "superstruct": "^0.8.2"
