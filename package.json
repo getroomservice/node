@@ -1,0 +1,16 @@
+{
+  "name": "@roomservice/node",
+  "version": "0.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "rm -rf dist; tsc"
+  },
+  "dependencies": {
+    "got": "^10.0.3",
+    "superstruct": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^12.12.17"
+  }
+}
