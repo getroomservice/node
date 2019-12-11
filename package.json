@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
-    "build": "rm -rf tsc; tsc",
+    "build": "tsc",
     "prepublish": "yarn build"
   },
   "files": [
@@ -16,6 +16,6 @@
     "superstruct": "^0.8.2"
   },
   "devDependencies": {
-    "@types/node": "^12.12.17"
+    "@types/node": "8.0.0"
   }
 }
