@@ -33,6 +33,9 @@ interface AuthorizeParams {
 export default class RoomService {
   private apiKey: string;
 
+  // We use the local variable to make testing easier
+  private _apiUrl: string = ROOM_SERVICE_API_URL;
+
   constructor(apiKey: string) {
     if (!apiKey.startsWith("sk_")) {
       throw new Error(
@@ -56,15 +59,12 @@ export default class RoomService {
     };
 
     try {
-      const response = await got.post(
-        ROOM_SERVICE_API_URL + "/server/authorize",
-        {
-          json: body,
-          headers: {
-            authorization: `Bearer ${this.apiKey}`
-          }
+      const response = await got.post(this._apiUrl + "/server/authorize", {
+        json: body,
+        headers: {
+          authorization: `Bearer ${this.apiKey}`
         }
-      );
+      });
 
       const { session, room } = JSON.parse(response.body);
 
