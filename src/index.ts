@@ -37,6 +37,10 @@ export default class RoomService {
   private _apiUrl: string = ROOM_SERVICE_API_URL;
 
   constructor(apiKey: string) {
+    if (!apiKey) {
+      throw new Error("Your API Key is undefined. You may encounter this if you're reading it from an environment variable, but that variable isn't set.")
+    }
+
     if (!apiKey.startsWith("sk_")) {
       throw new Error(
         "Your API key doesn't look right. Valid API Keys start with 'sk_'."
