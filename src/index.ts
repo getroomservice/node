@@ -38,7 +38,9 @@ export default class RoomService {
 
   constructor(apiKey: string) {
     if (!apiKey) {
-      throw new Error("Your API Key is undefined. You may encounter this if you're reading it from an environment variable, but that variable isn't set.")
+      throw new Error(
+        "Your API Key is undefined. You may encounter this if you're reading it from an environment variable, but that variable isn't set."
+      );
     }
 
     if (!apiKey.startsWith("sk_")) {
@@ -81,6 +83,13 @@ export default class RoomService {
       console.error("error", err);
       res.status(500).end();
     }
+  }
+
+  async reject(res: any) {
+    res.status(401);
+    res.json({
+      message: "Unauthorized"
+    });
   }
 
   parse(
