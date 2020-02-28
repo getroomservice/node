@@ -67,7 +67,7 @@ export default class RoomService {
           ? { reference: params.room }
           : params.room,
       user:
-        typeof params.room === 'string'
+        typeof params.user === 'string'
           ? { reference: params.user }
           : params.user,
     };
