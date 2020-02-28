@@ -1,21 +1,43 @@
 {
-  "name": "@roomservice/node",
-  "version": "0.0.3",
-  "main": "dist/index.js",
+  "version": "0.1.0",
   "license": "MIT",
-  "scripts": {
-    "build": "tsc",
-    "prepublish": "yarn build"
-  },
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "files": [
-    "/dist"
+    "dist"
   ],
-  "types": "dist/index.d.ts",
-  "dependencies": {
-    "got": "^10.0.3",
-    "superstruct": "^0.8.2"
+  "scripts": {
+    "start": "tsdx watch",
+    "build": "tsdx build",
+    "test": "tsdx test",
+    "lint": "tsdx lint",
+    "prepare": "tsdx build"
   },
+  "peerDependencies": {},
+  "husky": {
+    "hooks": {
+      "pre-commit": "tsdx lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "name": "node",
+  "author": "Flaque",
+  "module": "dist/node.esm.js",
   "devDependencies": {
-    "@types/node": "8.0.0"
+    "@types/jest": "^25.1.3",
+    "husky": "^4.2.3",
+    "nock": "^12.0.1",
+    "tsdx": "^0.12.3",
+    "tslib": "^1.11.1",
+    "typescript": "^3.8.2"
+  },
+  "dependencies": {
+    "got": "^10.6.0",
+    "superstruct": "^0.8.3"
   }
 }
