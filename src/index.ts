@@ -14,7 +14,6 @@ type Room =
   | {
       reference: string;
       name?: string;
-      defaultState?: object;
     };
 
 type User =
@@ -72,7 +71,7 @@ export default class RoomService {
           : params.user,
     };
 
-    const response = await got.post(this._apiUrl + '/server/authorize', {
+    const response = await got.post(this._apiUrl + '/server/v1/authorize', {
       json: body,
       headers: {
         authorization: `Bearer ${this.apiKey}`,
