@@ -4,7 +4,7 @@ import nock from 'nock';
 test('authorize', async () => {
   const client = new RoomService('sk_ima_key');
   const authCall = nock('https://api.roomservice.dev')
-    .post('/server/authorize')
+    .post('/server/v1/authorize')
     .reply(200, {
       room: {
         reference: 'my-room',
