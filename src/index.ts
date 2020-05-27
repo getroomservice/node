@@ -1,5 +1,7 @@
 import got from 'got';
 import { struct } from 'superstruct';
+import { change, load, getChanges } from 'automerge';
+import { getClock } from 'automerge-clocks';
 
 const ROOM_SERVICE_API_URL = 'https://api.roomservice.dev';
 
@@ -83,6 +85,52 @@ export default class RoomService {
       room,
       session,
     };
+  }
+
+  async updateDoc<T = object>(
+    roomReference: string,
+    documentReference: string,
+    changeCallback: (doc: T) => void
+  ) {
+    const docResp = await got.get(
+      this._apiUrl +
+        `/server/v1/rooms/${roomReference}/documents/${documentReference}/automerge`
+    );
+
+    if (!docResp || docResp.statusCode !== 200) {
+      if (docResp.statusCode === 404) {
+        throw new Error(
+          `Document '${documentReference}' in room '${roomReference}' has not been created yet.`
+        );
+      }
+
+      throw new Error(
+        'Failed to retrieve the current state of the Room Service Document.'
+      );
+    }
+
+    const oldDoc = load(docResp.body);
+    const newDoc = change(oldDoc, changeCallback);
+    const changes = getChanges(oldDoc, newDoc);
+    const clock = getClock(newDoc);
+
+    await got.post(
+      this._apiUrl +
+        `/server/v1/rooms/${roomReference}/documents/${documentReference}/publishUpdate`,
+      {
+        json: {
+          payload: {
+            msg: {
+              changes,
+              clock,
+            },
+          },
+        },
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+        },
+      }
+    );
   }
 
   parseBody(

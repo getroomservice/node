@@ -37,6 +37,8 @@
     "typescript": "^3.8.2"
   },
   "dependencies": {
+    "automerge": "^0.14.1",
+    "automerge-clocks": "^1.2.1",
     "got": "^10.6.0",
     "superstruct": "^0.8.3"
   }
