@@ -94,7 +94,12 @@ export default class RoomService {
   ) {
     const docResp = await got.get(
       this._apiUrl +
-        `/server/v1/rooms/${roomReference}/documents/${documentReference}/automerge`
+        `/server/v1/rooms/${roomReference}/documents/${documentReference}/automerge`,
+      {
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+        },
+      }
     );
 
     if (!docResp || docResp.statusCode !== 200) {
