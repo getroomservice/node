@@ -28,6 +28,7 @@ type User =
 interface AuthorizeParams {
   room: Room;
   user: User;
+  scope?: 'read-only' | 'read-write';
 }
 
 export default class RoomService {
@@ -71,6 +72,7 @@ export default class RoomService {
         typeof params.user === 'string'
           ? { reference: params.user }
           : params.user,
+      scope: params.scope || 'read-write',
     };
 
     const response = await got.post(this._apiUrl + '/server/v1/authorize', {
