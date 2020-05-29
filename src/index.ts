@@ -75,6 +75,12 @@ export default class RoomService {
       scope: params.scope || 'read-write',
     };
 
+    if (params.scope) {
+      if (!(params.scope === 'read-only' || params.scope === 'read-write')) {
+        throw new Error("Scope must be either 'read-only' or 'read-write'");
+      }
+    }
+
     const response = await got.post(this._apiUrl + '/server/v1/authorize', {
       json: body,
       headers: {
