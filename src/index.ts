@@ -1,7 +1,7 @@
 import got from 'got';
 import { struct } from 'superstruct';
 
-const ROOM_SERVICE_API_URL = 'https://api.roomservice.dev';
+const ROOM_SERVICE_API_URL = 'https://aws.roomservice.dev';
 
 const AuthorizationBody = struct({
   room: {

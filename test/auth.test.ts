@@ -3,7 +3,7 @@ import nock from 'nock';
 
 test('authorize', async () => {
   const client = new RoomService('sk_ima_key');
-  const authCall = nock('https://api.roomservice.dev')
+  const authCall = nock('https://aws.roomservice.dev')
     .post('/server/v1/authorize')
     .reply(200, {
       room: {
