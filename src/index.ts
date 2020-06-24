@@ -1,7 +1,7 @@
 import got from 'got';
 import { struct } from 'superstruct';
-import { change, load, getChanges, from, save } from 'automerge';
-import { getClock } from 'automerge-clocks';
+import { from, save } from 'automerge';
+import { getMessage } from './getMessage';
 
 const ROOM_SERVICE_API_URL = 'https://api.roomservice.dev';
 
@@ -131,10 +131,7 @@ export default class RoomService {
       docStr = docResp.body;
     }
 
-    const oldDoc = load(docStr);
-    const newDoc = change(oldDoc, changeCallback);
-    const changes = getChanges(oldDoc, newDoc);
-    const clock = getClock(newDoc);
+    const msg = getMessage(docStr, changeCallback);
 
     await got.post(
       this._apiUrl +
@@ -142,10 +139,7 @@ export default class RoomService {
       {
         json: {
           payload: {
-            msg: {
-              changes,
-              clock,
-            },
+            msg,
           },
         },
         headers: {
@@ -173,4 +167,15 @@ export default class RoomService {
 
     return AuthorizationBody(data);
   }
+}
+
+try {
+  const client = new RoomService(process.env.ROOM_SERVICE_SECRET);
+  client.setDoc(passthrough.storyID, 'default', doc => {
+    doc.scene.layers[passthrough.layerID].value.source = eventData.id;
+    doc.scene.layers[passthrough.layerID].value.status = 3; // `IDLE
+  });
+} catch (e) {
+  console.log('ROOMSERVICE ERROR');
+  console.log(e);
 }
