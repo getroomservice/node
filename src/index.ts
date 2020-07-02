@@ -1,6 +1,6 @@
 import got from 'got';
 import { struct } from 'superstruct';
-import { from, save } from 'automerge';
+import { from, save, init } from 'automerge';
 import { getMessage } from './getMessage';
 
 const ROOM_SERVICE_API_URL = 'https://aws.roomservice.dev';
@@ -121,7 +121,7 @@ export default class RoomService {
           },
         });
         // Purely empty document
-        docStr = save(from({}));
+        docStr = save(init());
       } else {
         throw new Error(
           'Failed to retrieve the current state of the Room Service Document.'
