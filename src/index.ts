@@ -1,6 +1,6 @@
 import got from 'got';
 import { struct } from 'superstruct';
-import { from, save, init } from 'automerge';
+import { save, init } from 'automerge';
 import { getMessage } from './getMessage';
 
 const ROOM_SERVICE_API_URL = 'https://aws.roomservice.dev';

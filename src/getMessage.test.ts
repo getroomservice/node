@@ -1,4 +1,4 @@
-import { from, change, save } from 'automerge';
+import { from } from 'automerge';
 import { applyChanges } from './getMessage';
 
 test('recovery from Object.assign', () => {
