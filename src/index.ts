@@ -168,14 +168,3 @@ export default class RoomService {
     return AuthorizationBody(data);
   }
 }
-
-try {
-  const client = new RoomService(process.env.ROOM_SERVICE_SECRET);
-  client.setDoc(passthrough.storyID, 'default', doc => {
-    doc.scene.layers[passthrough.layerID].value.source = eventData.id;
-    doc.scene.layers[passthrough.layerID].value.status = 3; // `IDLE
-  });
-} catch (e) {
-  console.log('ROOMSERVICE ERROR');
-  console.log(e);
-}
