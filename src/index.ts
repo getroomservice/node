@@ -1,5 +1,7 @@
 import got from 'got';
 import { struct } from 'superstruct';
+import { from, save } from 'automerge';
+import { getMessage } from './getMessage';
 
 const ROOM_SERVICE_API_URL = 'https://aws.roomservice.dev';
 
@@ -26,6 +28,7 @@ type User =
 interface AuthorizeParams {
   room: Room;
   user: User;
+  scope?: 'read-only' | 'read-write';
 }
 
 export default class RoomService {
@@ -69,7 +72,14 @@ export default class RoomService {
         typeof params.user === 'string'
           ? { reference: params.user }
           : params.user,
+      scope: params.scope || 'read-write',
     };
+
+    if (params.scope) {
+      if (!(params.scope === 'read-only' || params.scope === 'read-write')) {
+        throw new Error("Scope must be either 'read-only' or 'read-write'");
+      }
+    }
 
     const response = await got.post(this._apiUrl + '/server/v1/authorize', {
       json: body,
@@ -83,6 +93,60 @@ export default class RoomService {
       room,
       session,
     };
+  }
+
+  async setDoc<T = object>(
+    roomReference: string,
+    documentReference: string,
+    changeCallback: (doc: T) => void
+  ) {
+    const docResp = await got.get(
+      this._apiUrl +
+        `/server/v1/rooms/${roomReference}/documents/${documentReference}/automerge`,
+      {
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+        },
+        throwHttpErrors: false,
+      }
+    );
+
+    let docStr: string;
+
+    if (!docResp || docResp.statusCode !== 200) {
+      if (docResp.statusCode === 404) {
+        await got.post(this._apiUrl + `/server/v1/rooms/${roomReference}`, {
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+          },
+        });
+        // Purely empty document
+        docStr = save(from({}));
+      } else {
+        throw new Error(
+          'Failed to retrieve the current state of the Room Service Document.'
+        );
+      }
+    } else {
+      docStr = docResp.body;
+    }
+
+    const msg = getMessage(docStr, changeCallback);
+
+    await got.post(
+      this._apiUrl +
+        `/server/v1/rooms/${roomReference}/documents/${documentReference}/publishUpdate`,
+      {
+        json: {
+          payload: {
+            msg,
+          },
+        },
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+        },
+      }
+    );
   }
 
   parseBody(
