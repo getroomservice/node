@@ -84,7 +84,6 @@ export class API {
       responseType: 'json',
       throwHttpErrors: false,
     });
-    console.log(path);
     if (response.statusCode === 404) {
       return false;
     }
