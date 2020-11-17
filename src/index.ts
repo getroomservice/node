@@ -1,6 +1,9 @@
 import { API } from './api';
 import {
   DocumentCheckpoint,
+  ListInterpreter,
+  ListMeta,
+  ListStore,
   MapInterpreter,
   MapMeta,
   MapStore,
@@ -57,6 +60,13 @@ export class MapClient<T> {
     return this.store[key] as T;
   }
 
+  /**
+   * clears all changes made to this map so they won't be saved.
+   */
+  clearChanges() {
+    this.cmds = [];
+  }
+
   toObject(): { [key: string]: T } {
     const obj = {} as { [key: string]: T };
     for (let key of this.keys) {
@@ -67,31 +77,131 @@ export class MapClient<T> {
 }
 
 export class ListClient {
-  push() {}
+  id: string;
+  private cmds: string[][];
+  private store: ListStore;
+  private meta: ListMeta;
+
+  constructor(
+    name: string,
+    rawCheckpoint: DocumentCheckpoint,
+    cmds: string[][]
+  ) {
+    this.id = name;
+    this.cmds = cmds;
+
+    const { store, meta, cmd } = ListInterpreter.newList(
+      rawCheckpoint.id,
+      name,
+      'server'
+    );
+    this.cmds.push(cmd);
+    this.store = store;
+    this.meta = meta;
+  }
+
+  private clone(): ListClient {
+    return Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+  }
+
+  push<T>(...args: T[]) {
+    const cmds = ListInterpreter.runPush<T>(this.store, this.meta, ...args);
+    this.cmds = this.cmds.concat(cmds);
+    return this.clone();
+  }
+
+  set<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runSet<T>(this.store, this.meta, index, value);
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  insertAfter<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runInsertAfter<T>(
+      this.store,
+      this.meta,
+      index,
+      value
+    );
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  insertAt<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runInsertAt<T>(
+      this.store,
+      this.meta,
+      index,
+      value
+    );
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  delete(index: number) {
+    const cmd = ListInterpreter.runDelete(this.store, this.meta, index);
+    if (!cmd) return this.clone();
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  /**
+   * clears all changes made to this map so they won't be saved.
+   */
+  clearChanges() {
+    this.cmds = [];
+  }
 }
 
 export class Checkpoint {
   private name: string;
   private checkpoint: DocumentCheckpoint;
-  private cmds: string[][];
+  private cmds: {
+    maps: {
+      [key: string]: string[][];
+    };
+    lists: {
+      [key: string]: string[][];
+    };
+  };
   private api: API;
 
   constructor(api: API, name: string, rawCheckpoint: DocumentCheckpoint) {
     this.api = api;
     this.name = name;
     this.checkpoint = rawCheckpoint;
-    this.cmds = [];
+    this.cmds = {
+      maps: {},
+      lists: {},
+    };
   }
 
   map(name: string) {
-    return new MapClient(name, this.checkpoint, this.cmds);
+    this.cmds.maps[name] = [];
+    return new MapClient(name, this.checkpoint, this.cmds.maps[name]);
   }
 
-  // list(name: string) {}
+  list(name: string) {
+    this.cmds.lists[name] = [];
+    return new ListClient(name, this.checkpoint, this.cmds.lists[name]);
+  }
 
-  async save() {
-    await this.api.postChanges(this.name, this.cmds);
-    this.cmds = [];
+  async save(...args: Array<MapClient<any> | ListClient>) {
+    let changes: string[][] = [];
+
+    for (let client of args) {
+      if (client instanceof MapClient) {
+        changes = changes.concat(this.cmds.maps[client.id]);
+        client.clearChanges();
+        continue;
+      }
+      if (client instanceof ListClient) {
+        changes = changes.concat(this.cmds.lists[client.id]);
+        continue;
+      }
+    }
+
+    await this.api.postChanges(this.name, changes);
   }
 }
 
