@@ -107,6 +107,9 @@ export class API {
         "Too many changes: you're trying to save too many changes at once. Try to make less than 1000 changes at once, and save multiple times."
       );
     }
+    if (cmds.length === 0) {
+      return;
+    }
 
     const path =
       this.domain +
@@ -116,7 +119,7 @@ export class API {
 
     const response = await got.post(path, {
       json: {
-        cmds: cmds,
+        commands: cmds,
       },
       headers: {
         authorization: bearer(this.key),
