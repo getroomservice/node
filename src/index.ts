@@ -8,6 +8,7 @@ import {
   MapMeta,
   MapStore,
 } from '@roomservice/core';
+import { v4 as uuid } from 'uuid';
 
 export class MapClient<T> {
   private cmds: string[][];
@@ -93,7 +94,7 @@ export class ListClient {
     const { store, meta, cmd } = ListInterpreter.newList(
       rawCheckpoint.id,
       name,
-      'server'
+      uuid()
     );
     this.cmds.push(cmd);
     this.store = store;
