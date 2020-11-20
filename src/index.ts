@@ -106,7 +106,7 @@ export class ListClient {
 
   push<T>(...args: T[]) {
     const cmds = ListInterpreter.runPush<T>(this.store, this.meta, ...args);
-    this.cmds = this.cmds.concat(cmds);
+    this.cmds.push(...cmds);
     return this.clone();
   }
 
