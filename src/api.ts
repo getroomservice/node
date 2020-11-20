@@ -119,7 +119,7 @@ export class API {
 
     const response = await got.post(path, {
       json: {
-        commands: cmds,
+        cmds: cmds,
       },
       headers: {
         authorization: bearer(this.key),
