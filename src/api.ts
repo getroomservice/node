@@ -4,17 +4,25 @@ import { DocumentCheckpoint } from '@roomservice/core';
 
 function maybeThrowResponseErrors(
   path: string,
-  response: { statusCode: number }
+  response: { statusCode: number; body: any }
 ) {
   if (response.statusCode >= 500) {
     throw new RoomServiceOutageError(
-      `The Room Service request to "${path}" has failed with a '500'. This is likely a bug on Room Service's side. We apologize for the disruption, engineers at Room Service have likely been alerted.`
+      `The Room Service request to "${path}" has failed with a '500'. This is likely a bug on Room Service's side. We apologize for the disruption, engineers at Room Service have likely been alerted.
+
+The body of the response looks like this:
+${JSON.stringify(response.body, null, 2)}`
     );
   }
 
   if (!(response.statusCode > 100 && response.statusCode < 300)) {
     throw new Error(
-      `The Room Service request to "${path}" failed unexpectedly with a '${response.statusCode}'.`
+      `The Room Service request to "${path}" failed unexpectedly with a '${
+        response.statusCode
+      }'.
+
+The body of the response looks like this:
+${JSON.stringify(response.body, null, 2)}`
     );
   }
 }
