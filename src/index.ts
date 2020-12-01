@@ -1,170 +1,241 @@
-import got from 'got';
-import { struct } from 'superstruct';
-import { save, init } from 'automerge';
-import { getMessage } from './getMessage';
+import { API } from './api';
+import {
+  DocumentCheckpoint,
+  ListInterpreter,
+  ListMeta,
+  ListStore,
+  MapInterpreter,
+  MapMeta,
+  MapStore,
+} from '@roomservice/core';
+import { v4 as uuid } from 'uuid';
 
-const ROOM_SERVICE_API_URL = 'https://aws.roomservice.dev';
+export class MapClient<T> {
+  private cmds: string[][];
+  private store: MapStore<T>;
+  private meta: MapMeta;
 
-const AuthorizationBody = struct({
-  room: {
-    reference: 'string',
-  },
-});
+  id: string;
 
-type Room =
-  | string
-  | {
-      reference: string;
-      name?: string;
-    };
+  constructor(
+    name: string,
+    rawCheckpoint: DocumentCheckpoint,
+    cmds: string[][]
+  ) {
+    this.id = name;
+    this.cmds = cmds;
 
-type User =
-  | string
-  | {
-      reference: string;
-      name?: string;
-    };
+    const { store, meta, cmd } = MapInterpreter.newMap<T>(
+      rawCheckpoint.id,
+      name
+    );
+    this.cmds.push(cmd);
 
-interface AuthorizeParams {
-  room: Room;
-  user: User;
-  scope?: 'read-only' | 'read-write';
+    this.store = store;
+    this.meta = meta;
+
+    MapInterpreter.importFromRawCheckpoint(store, rawCheckpoint, name);
+  }
+
+  private clone(): MapClient<T> {
+    return Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+  }
+
+  get keys() {
+    return Object.keys(this.store);
+  }
+
+  set(key: string, value: T) {
+    const cmd = MapInterpreter.runSet(this.store, this.meta, key, value);
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  delete(key: string) {
+    const cmd = MapInterpreter.runDelete(this.store, this.meta, key);
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  get(key: string): T {
+    return this.store[key] as T;
+  }
+
+  /**
+   * clears all changes made to this map so they won't be saved.
+   */
+  clearChanges() {
+    this.cmds = [];
+  }
+
+  toObject(): { [key: string]: T } {
+    const obj = {} as { [key: string]: T };
+    for (let key of this.keys) {
+      obj[key] = this.get(key);
+    }
+    return obj;
+  }
 }
 
-export default class RoomService {
-  private apiKey: string;
+export class ListClient {
+  id: string;
+  private cmds: string[][];
+  private store: ListStore;
+  private meta: ListMeta;
 
-  // We use the local variable to make testing easier
-  private _apiUrl: string = ROOM_SERVICE_API_URL;
-
-  constructor(apiKey: string) {
-    if (!apiKey) {
-      throw new Error(
-        "Your API Key is undefined. You may encounter this if you're reading it from an environment variable, but that variable isn't set."
-      );
-    }
-
-    if (!apiKey.startsWith('sk_')) {
-      throw new Error(
-        "Your API key doesn't look right. Valid API Keys start with 'sk_'."
-      );
-    }
-
-    this.apiKey = apiKey;
-  }
-
-  async authorize(
-    params: AuthorizeParams
-  ): Promise<{
-    room: {
-      reference: string;
-    };
-    session: {
-      token: string;
-    };
-  }> {
-    const body = {
-      room:
-        typeof params.room === 'string'
-          ? { reference: params.room }
-          : params.room,
-      user:
-        typeof params.user === 'string'
-          ? { reference: params.user }
-          : params.user,
-      scope: params.scope || 'read-write',
-    };
-
-    if (params.scope) {
-      if (!(params.scope === 'read-only' || params.scope === 'read-write')) {
-        throw new Error("Scope must be either 'read-only' or 'read-write'");
-      }
-    }
-
-    const response = await got.post(this._apiUrl + '/server/v1/authorize', {
-      json: body,
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-      },
-    });
-
-    const { session, room } = JSON.parse(response.body);
-    return {
-      room,
-      session,
-    };
-  }
-
-  async setDoc<T = object>(
-    roomReference: string,
-    documentReference: string,
-    changeCallback: (doc: T) => void
+  constructor(
+    name: string,
+    rawCheckpoint: DocumentCheckpoint,
+    cmds: string[][]
   ) {
-    const docResp = await got.get(
-      this._apiUrl +
-        `/server/v1/rooms/${roomReference}/documents/${documentReference}/automerge`,
-      {
-        headers: {
-          authorization: `Bearer ${this.apiKey}`,
-        },
-        throwHttpErrors: false,
-      }
+    this.id = name;
+    this.cmds = cmds;
+
+    const { store, meta, cmd } = ListInterpreter.newList(
+      rawCheckpoint.id,
+      name,
+      uuid()
     );
-
-    let docStr: string;
-
-    if (!docResp || docResp.statusCode !== 200) {
-      if (docResp.statusCode === 404) {
-        await got.post(this._apiUrl + `/server/v1/rooms/${roomReference}`, {
-          headers: {
-            authorization: `Bearer ${this.apiKey}`,
-          },
-        });
-        // Purely empty document
-        docStr = save(init());
-      } else {
-        throw new Error(
-          'Failed to retrieve the current state of the Room Service Document.'
-        );
-      }
-    } else {
-      docStr = docResp.body;
-    }
-
-    const msg = getMessage(docStr, changeCallback);
-
-    await got.post(
-      this._apiUrl +
-        `/server/v1/rooms/${roomReference}/documents/${documentReference}/publishUpdate`,
-      {
-        json: {
-          payload: {
-            msg,
-          },
-        },
-        headers: {
-          authorization: `Bearer ${this.apiKey}`,
-        },
-      }
-    );
+    this.cmds.push(cmd);
+    this.store = store;
+    this.meta = meta;
   }
 
-  parseBody(
-    body: object | string
-  ): {
-    // In the future, we may have some other options here
-    // so we're keeping this an object to future-proof
-    room: {
-      reference: string;
+  private clone(): ListClient {
+    return Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+  }
+
+  push<T>(...args: T[]) {
+    const cmds = ListInterpreter.runPush<T>(this.store, this.meta, ...args);
+    this.cmds.push(...cmds);
+    return this.clone();
+  }
+
+  set<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runSet<T>(this.store, this.meta, index, value);
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  insertAfter<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runInsertAfter<T>(
+      this.store,
+      this.meta,
+      index,
+      value
+    );
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  insertAt<T>(index: number, value: T) {
+    const cmd = ListInterpreter.runInsertAt<T>(
+      this.store,
+      this.meta,
+      index,
+      value
+    );
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  delete(index: number) {
+    const cmd = ListInterpreter.runDelete(this.store, this.meta, index);
+    if (!cmd) return this.clone();
+    this.cmds.push(cmd);
+    return this.clone();
+  }
+
+  /**
+   * clears all changes made to this map so they won't be saved.
+   */
+  clearChanges() {
+    this.cmds = [];
+  }
+}
+
+export class Checkpoint {
+  private name: string;
+  private checkpoint: DocumentCheckpoint;
+  private cmds: {
+    maps: {
+      [key: string]: string[][];
     };
-  } {
-    let data;
-    if (typeof body === 'string') {
-      data = JSON.parse(body);
-    } else {
-      data = body;
+    lists: {
+      [key: string]: string[][];
+    };
+  };
+  private api: API;
+
+  constructor(api: API, name: string, rawCheckpoint: DocumentCheckpoint) {
+    this.api = api;
+    this.name = name;
+    this.checkpoint = rawCheckpoint;
+    this.cmds = {
+      maps: {},
+      lists: {},
+    };
+  }
+
+  map(name: string) {
+    this.cmds.maps[name] = [];
+    return new MapClient(name, this.checkpoint, this.cmds.maps[name]);
+  }
+
+  list(name: string) {
+    this.cmds.lists[name] = [];
+    return new ListClient(name, this.checkpoint, this.cmds.lists[name]);
+  }
+
+  async save(...args: Array<MapClient<any> | ListClient>) {
+    let changes: string[][] = [];
+
+    for (let client of args) {
+      if (client instanceof MapClient) {
+        changes = changes.concat(this.cmds.maps[client.id]);
+        client.clearChanges();
+        continue;
+      }
+      if (client instanceof ListClient) {
+        changes = changes.concat(this.cmds.lists[client.id]);
+        continue;
+      }
     }
 
-    return AuthorizationBody(data);
+    await this.api.postChanges(this.name, changes);
   }
+}
+
+type RoomServiceClientParams = string | { domain: string; secret: string };
+
+class RoomService {
+  private api: API;
+
+  constructor(paramsOrKey: RoomServiceClientParams) {
+    if (typeof paramsOrKey === 'string') {
+      this.api = new API({
+        domain: 'https://super.roomservice.dev',
+        key: paramsOrKey,
+      });
+      return;
+    }
+
+    this.api = new API({
+      domain: paramsOrKey.domain,
+      key: paramsOrKey.secret,
+    });
+  }
+
+  async checkpoint(name: string) {
+    let rawCheckpoint = await this.api.getCheckpoint(name);
+    if (!rawCheckpoint) {
+      rawCheckpoint = (await this.api.postRoom(name)).document_raw;
+    }
+
+    return new Checkpoint(this.api, name, rawCheckpoint as DocumentCheckpoint);
+  }
+}
+
+export default function createClient(params: RoomServiceClientParams) {
+  return new RoomService(params);
 }
