@@ -1,1 +1,3 @@
-This is an experimental client you shouldn't use at the moment, but left here for a future node client. 
+# `@roomservice/node`
+
+This is the Room Service Node.js Client. You probably want the docs, [they live here.](https://www.roomservice.dev/docs/serverside)
