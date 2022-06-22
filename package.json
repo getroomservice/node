@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@roomservice/core": "^0.2.0",
-    "got": "^11.8.0",
+    "got": "^11.8.5",
     "uuid": "^8.3.1"
   }
 }
